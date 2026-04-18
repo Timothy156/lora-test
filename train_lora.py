@@ -106,10 +106,10 @@ if HAS_GPU:
     # -------------------------------------------------------
     # GPU SETTINGS — more aggressive since GPU is much faster
     # -------------------------------------------------------
-    NUM_EPOCHS = 3          # How many full passes through your dataset
-    BATCH_SIZE = 4          # GPU can process 4 examples at once (much faster)
+    NUM_EPOCHS = 10          # How many full passes through your dataset
+    BATCH_SIZE = 10          # GPU can process more examples at once (much faster)
     LEARNING_RATE = 2e-4    # Slightly lower LR works well with larger batches on GPU
-    MAX_LENGTH = 512        # GPU has more memory, so we can handle longer text
+    MAX_LENGTH = 1024        # GPU has more memory, so we can handle longer text
     SAVE_STEPS = 50         # Save a checkpoint every 50 steps
     LOGGING_STEPS = 10      # Print progress every 10 steps
     GRAD_ACCUM_STEPS = 2    # Fewer accumulation steps needed (batch is already bigger)
