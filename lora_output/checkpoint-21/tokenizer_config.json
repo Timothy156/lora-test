@@ -4,7 +4,6 @@
   "bos_token": "<|endoftext|>",
   "clean_up_tokenization_spaces": false,
   "eos_token": "<|endoftext|>",
-  "errors": "replace",
   "extra_special_tokens": [
     "<|endoftext|>",
     "<|im_start|>",
@@ -27,7 +26,7 @@
   "is_local": false,
   "model_max_length": 8192,
   "pad_token": "<|endoftext|>",
-  "tokenizer_class": "GPT2Tokenizer",
+  "tokenizer_class": "TokenizersBackend",
   "unk_token": "<|endoftext|>",
   "vocab_size": 49152
 }
