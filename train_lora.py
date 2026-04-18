@@ -106,12 +106,12 @@ if HAS_GPU:
     # -------------------------------------------------------
     # GPU SETTINGS — more aggressive since GPU is much faster
     # -------------------------------------------------------
-    NUM_EPOCHS = 10          # How many full passes through your dataset
-    BATCH_SIZE = 10          # GPU can process more examples at once (much faster)
+    NUM_EPOCHS = 60          # How many full passes through your dataset
+    BATCH_SIZE = 8          # GPU can process more examples at once (much faster)
     LEARNING_RATE = 2e-4    # Slightly lower LR works well with larger batches on GPU
     MAX_LENGTH = 1024        # GPU has more memory, so we can handle longer text
     SAVE_STEPS = 50         # Save a checkpoint every 50 steps
-    LOGGING_STEPS = 10      # Print progress every 10 steps
+    LOGGING_STEPS = 1      # Print progress every 10 steps
     GRAD_ACCUM_STEPS = 2    # Fewer accumulation steps needed (batch is already bigger)
 
     # torch.float16 = "half precision" — uses HALF the memory of float32.
@@ -213,21 +213,65 @@ if os.path.exists(OUTPUT_DIR) and os.path.exists(os.path.join(OUTPUT_DIR, "adapt
     # NOW convert everything to the correct dtype for this device.
     # .to(MODEL_DTYPE) shifts all weights to float16 (GPU) or keeps float32 (CPU).
     # We do this AFTER loading so the conversion is applied to both
-    # the base model AND the adapter weights together, at the same time.
-    model = model.to(MODEL_DTYPE)
+    # the base model AND the adapter weights together at the same time.
+    #
+    # OLDER GPU SAFETY NET:
+    # Some older GPUs (e.g. Tesla K80, P100, or GPUs with low CUDA compute
+    # capability) don't support the float16 CUDA kernels that .to(float16) needs.
+    # This causes: "CUDA error: no kernel image is available for execution on device"
+    # The try/except below catches that crash and automatically falls back to float32
+    # so training still works on that GPU — just a little slower and using more memory.
+    try:
+        model = model.to(MODEL_DTYPE)
+        print(f"   Adapter loaded and converted to {'float16 (GPU)' if USE_FP16 else 'float32'}.")
+        print(f"   Safe to resume even if previous training was on a different device!")
 
-    print(f"   Adapter loaded and converted to {'float16 (GPU)' if HAS_GPU else 'float32 (CPU)'}.")
-    print(f"   Safe to resume even if previous training was on a different device!")
+    except Exception as e:
+        # This runs if the GPU does not support float16 kernels.
+        print(f"\n   Warning: Could not convert model to float16.")
+        print(f"   Reason: {e}")
+        print(f"   Your GPU likely does not support float16 operations.")
+        print(f"   Automatically falling back to float32 (slower but compatible)...")
+
+        # Override these so the rest of the script uses float32 consistently.
+        # If we did NOT update USE_FP16 here, TrainingArguments would still try
+        # to enable fp16=True later and crash again at the exact same GPU limitation.
+        MODEL_DTYPE = torch.float32
+        USE_FP16 = False
+
+        # float32 always works on any GPU — cast the model to it now
+        model = model.to(torch.float32)
+        print(f"   Fallback successful — continuing with float32.")
 
 else:
     print("No previous training found. Starting fresh...")
 
-    # Fresh start — load the base model directly in the correct dtype for this device
-    model = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME,
-        dtype=MODEL_DTYPE,      # float16 for GPU, float32 for CPU
-        device_map=DEVICE_MAP   # "auto" for GPU, "cpu" for CPU
-    )
+    # Load the base model fresh from Hugging Face.
+    # We wrap this in a try/except for the same older-GPU float16 reason:
+    # if the GPU doesn't support float16 kernels, from_pretrained with
+    # dtype=float16 will also crash. We catch it and retry with float32.
+    try:
+        model = AutoModelForCausalLM.from_pretrained(
+            MODEL_NAME,
+            dtype=MODEL_DTYPE,      # float16 for GPU, float32 for CPU
+            device_map=DEVICE_MAP   # "auto" for GPU, "cpu" for CPU
+        )
+    except Exception as e:
+        print(f"\n   Warning: Could not load model in float16.")
+        print(f"   Reason: {e}")
+        print(f"   Your GPU likely does not support float16 operations.")
+        print(f"   Automatically falling back to float32 (slower but compatible)...")
+
+        # Override so TrainingArguments also uses fp16=False later
+        MODEL_DTYPE = torch.float32
+        USE_FP16 = False
+
+        model = AutoModelForCausalLM.from_pretrained(
+            MODEL_NAME,
+            dtype=torch.float32,
+            device_map=DEVICE_MAP
+        )
+        print(f"   Fallback successful — continuing with float32.")
 
 print(f"\n✅ Model loaded! Parameters: {sum(p.numel() for p in model.parameters()):,}")
 

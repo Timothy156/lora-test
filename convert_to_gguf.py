@@ -55,7 +55,7 @@ MERGED_MODEL_DIR = "./merged_model"
 # Example on Windows:  "C:/Users/YourName/llama.cpp"
 # Example on Linux:    "/home/yourname/llama.cpp"
 # Example on Mac:      "/Users/yourname/llama.cpp"
-LLAMA_CPP_PATH = "/path/to/llama.cpp"  # <-- CHANGE THIS
+LLAMA_CPP_PATH = "llama.cpp"  # <-- CHANGE THIS
 
 # Output GGUF file name and location
 # The final .gguf file will be saved here
