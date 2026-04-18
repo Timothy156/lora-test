@@ -264,10 +264,10 @@ training_args = TrainingArguments(
 # The Trainer handles the entire training loop:
 # forward pass → calculate loss → backpropagation → update weights → repeat
 trainer = Trainer(
-    model=model,                    # The LoRA-wrapped model
-    args=training_args,             # Training settings from above
+    model=model,                     # The LoRA-wrapped model
+    args=training_args,              # Training settings from above
     train_dataset=tokenized_dataset, # Your tokenized data
-    tokenizer=tokenizer,            # Needed for padding/batching
+    processing_class=tokenizer,      # Replaces the old 'tokenizer=' argument in newer versions of transformers
 )
 
 print("\n" + "=" * 60)
