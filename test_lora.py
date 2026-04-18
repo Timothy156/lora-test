@@ -42,7 +42,7 @@ MAX_NEW_TOKENS = 200
 # - 0.1 = very focused and repetitive (deterministic)
 # - 0.7 = balanced creativity (recommended)
 # - 1.5 = very random and creative (may be incoherent)
-TEMPERATURE = 0.7
+TEMPERATURE = 0.01
 
 # top_p: "Nucleus sampling" — the model only picks from the top tokens
 # whose combined probability adds up to top_p.
@@ -55,7 +55,7 @@ DO_SAMPLE = True
 
 # repetition_penalty: Penalizes the model for repeating itself.
 # 1.0 = no penalty, 1.2 = mild penalty (recommended), 2.0 = strong penalty
-REPETITION_PENALTY = 1.2
+REPETITION_PENALTY = 1.3
 
 
 # ============================================================

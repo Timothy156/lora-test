@@ -18,6 +18,7 @@
 import os           # For file and folder operations
 import pandas as pd # For reading your CSV file
 import torch        # PyTorch — the core deep learning library
+from peft import PeftModel
 
 # Hugging Face Transformers — loads pretrained AI models
 from transformers import (
@@ -66,11 +67,11 @@ LORA_DROPOUT = 0.05
 
 # --- Training Settings ---
 NUM_EPOCHS = 3          # How many times the model sees your full dataset
-BATCH_SIZE = 1          # How many examples are processed at once (keep at 1 for CPU)
+BATCH_SIZE = 2          # How many examples are processed at once (keep at 1 for CPU)
 LEARNING_RATE = 3e-4    # How big each learning step is (3e-4 = 0.0003)
 MAX_LENGTH = 256        # Maximum number of tokens (word pieces) per example
 SAVE_STEPS = 50         # Save a checkpoint every N training steps
-LOGGING_STEPS = 10      # Print progress every N training steps
+LOGGING_STEPS = 1      # Print progress every N training steps
 
 
 # ============================================================
@@ -92,11 +93,15 @@ if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
 
 # Load the actual language model weights from Hugging Face.
-# torch_dtype=torch.float32 means we use 32-bit numbers (standard for CPU).
-model = AutoModelForCausalLM.from_pretrained(
-    MODEL_NAME,
-    torch_dtype=torch.float32  # Use float32 for CPU compatibility
-)
+# dtype=torch.float32 means we use 32-bit numbers (standard for CPU).
+# Check if a previous trained adapter exists
+if os.path.exists(OUTPUT_DIR) and os.path.exists(os.path.join(OUTPUT_DIR, "adapter_config.json")):
+    print("Found previous training! Resuming from saved adapter...")
+    base_model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, dtype=torch.float32)
+    model = PeftModel.from_pretrained(base_model, OUTPUT_DIR, is_trainable=True)
+else:
+    print("No previous training found. Starting fresh...")
+    model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, dtype=torch.float32)
 
 print(f"\n✅ Model loaded! Parameters: {sum(p.numel() for p in model.parameters()):,}")
 
