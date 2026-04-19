@@ -52,24 +52,90 @@ from datasets import Dataset
 
 HAS_GPU = torch.cuda.is_available()
 
+# -------------------------------------------------------
+# GPU SANITY TEST — runs before any settings are configured
+# -------------------------------------------------------
+# Why do we need this?
+# torch.cuda.is_available() only checks if a GPU EXISTS and has drivers.
+# It does NOT check if the installed PyTorch actually has CUDA kernels
+# compiled for that GPU's compute capability (the "version" of the GPU).
+#
+# Example: Tesla P100 has compute capability 6.0 (Pascal, 2016).
+# If the PyTorch on this machine was compiled only for newer GPUs (sm_70+),
+# it will detect the P100 as "available" but crash with:
+#   "CUDA error: no kernel image is available for execution on the device"
+# ...deep inside trainer.train(), which is very hard to catch and recover from.
+#
+# The fix: run a tiny test operation RIGHT NOW using the same CUDA op
+# (.ne()) that the Trainer uses internally. If it fails → fall back to CPU
+# immediately, before any GPU-specific settings are applied.
+#
+# torch.cuda.synchronize() is critical here — CUDA runs asynchronously,
+# meaning errors are often reported LATER than when they occur.
+# synchronize() forces all pending CUDA work to complete and raises any
+# errors immediately, so our try/except actually catches them.
+
+def _gpu_sanity_test():
+    """
+    Tests whether this GPU can actually run basic CUDA tensor operations.
+    Returns True if the GPU works correctly, False if it should be avoided.
+    """
+    try:
+        # Create a small integer tensor on the GPU (same dtype as labels during training)
+        t = torch.tensor([1, 2, 3], device='cuda', dtype=torch.long)
+
+        # .ne(-100) is the EXACT operation that the Trainer calls on every batch.
+        # If this fails, training would crash at the very first step.
+        _ = t.ne(-100)
+
+        # Also test basic float math (needed for loss computation)
+        f = torch.tensor([1.0, 2.0, 3.0], device='cuda', dtype=torch.float32)
+        _ = f.mean()
+
+        # Force synchronization — makes CUDA report any async errors RIGHT NOW
+        # so our try/except catches them instead of letting them crash later
+        torch.cuda.synchronize()
+
+        return True  # All tests passed — GPU is safe to use
+
+    except Exception as e:
+        # Any CUDA error here means this GPU cannot run the required kernels
+        print(f"   GPU kernel test failed: {e}")
+        return False
+
 if HAS_GPU:
-    # torch.cuda.get_device_name(0) returns the name of your first GPU
-    # e.g. "NVIDIA GeForce RTX 3080"
-    GPU_NAME = torch.cuda.get_device_name(0)
-
-    # total_memory is in bytes, so we divide to convert to gigabytes (GB)
+    GPU_NAME    = torch.cuda.get_device_name(0)
     GPU_VRAM_GB = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
+    GPU_MAJOR, GPU_MINOR = torch.cuda.get_device_capability(0)
 
     print("=" * 60)
-    print("🎮 GPU DETECTED — Using GPU for training!")
-    print(f"   GPU  : {GPU_NAME}")
-    print(f"   VRAM : {GPU_VRAM_GB:.1f} GB")
+    print(f"GPU found: {GPU_NAME}")
+    print(f"   VRAM             : {GPU_VRAM_GB:.1f} GB")
+    print(f"   Compute capability: {GPU_MAJOR}.{GPU_MINOR}")
+    print("   Running GPU sanity test...")
+
+    if _gpu_sanity_test():
+        # GPU passed all tests — safe to use
+        print("   GPU sanity test PASSED — using GPU for training!")
+        print("=" * 60)
+    else:
+        # GPU detected but can't run the required CUDA kernels.
+        # Flip HAS_GPU to False NOW so all downstream settings use CPU mode.
+        print("   GPU sanity test FAILED.")
+        print(f"   This GPU (compute capability {GPU_MAJOR}.{GPU_MINOR}) is not")
+        print("   fully supported by the installed PyTorch build.")
+        print("   Falling back to CPU — training will work, just slower.")
+        print("=" * 60)
+        HAS_GPU = False
+        GPU_NAME = None
+        GPU_VRAM_GB = 0
+
+if not HAS_GPU:
+    if 'GPU_NAME' not in dir():
+        GPU_NAME = None
+        GPU_VRAM_GB = 0
     print("=" * 60)
-else:
-    GPU_NAME = None
-    GPU_VRAM_GB = 0
-    print("=" * 60)
-    print("💻 No GPU detected — Using CPU for training.")
+    print("Using CPU for training.")
     print("   (Training will be slower, but everything will still work!)")
     print("=" * 60)
 
