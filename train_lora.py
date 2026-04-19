@@ -172,13 +172,13 @@ if HAS_GPU:
     # -------------------------------------------------------
     # GPU SETTINGS — more aggressive since GPU is much faster
     # -------------------------------------------------------
-    NUM_EPOCHS = 60          # How many full passes through your dataset
-    BATCH_SIZE = 8          # GPU can process more examples at once (much faster)
+    NUM_EPOCHS = 200          # How many full passes through your dataset
+    BATCH_SIZE = 15          # GPU can process more examples at once (much faster)
     LEARNING_RATE = 2e-4    # Slightly lower LR works well with larger batches on GPU
-    MAX_LENGTH = 1024        # GPU has more memory, so we can handle longer text
+    MAX_LENGTH = 512        # GPU has more memory, so we can handle longer text
     SAVE_STEPS = 50         # Save a checkpoint every 50 steps
     LOGGING_STEPS = 1      # Print progress every 10 steps
-    GRAD_ACCUM_STEPS = 2    # Fewer accumulation steps needed (batch is already bigger)
+    GRAD_ACCUM_STEPS = 3    # Fewer accumulation steps needed (batch is already bigger)
 
     # torch.float16 = "half precision" — uses HALF the memory of float32.
     # GPUs have dedicated hardware for float16 math, making it much faster.
@@ -196,13 +196,13 @@ else:
     # -------------------------------------------------------
     # CPU SETTINGS — conservative to avoid slow speeds / crashes
     # -------------------------------------------------------
-    NUM_EPOCHS = 3          # Same number of passes
+    NUM_EPOCHS = 200          # Same number of passes
     BATCH_SIZE = 1          # CPU can only safely handle 1 example at a time
     LEARNING_RATE = 3e-4    # Slightly higher LR to compensate for smaller batch
     MAX_LENGTH = 256        # Shorter sequences = less RAM used
     SAVE_STEPS = 50         # Save a checkpoint every 50 steps
     LOGGING_STEPS = 1       # Log EVERY step — useful since CPU training is slow
-    GRAD_ACCUM_STEPS = 4    # Accumulate 4 steps to simulate a batch size of 4
+    GRAD_ACCUM_STEPS = 6   
 
     # torch.float32 = "full precision" — the standard for CPU.
     # CPUs don't have special hardware for float16, so we must use float32.
