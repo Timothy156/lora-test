@@ -173,12 +173,12 @@ if HAS_GPU:
     # GPU SETTINGS — more aggressive since GPU is much faster
     # -------------------------------------------------------
     NUM_EPOCHS = 200          # How many full passes through your dataset
-    BATCH_SIZE = 15          # GPU can process more examples at once (much faster)
+    BATCH_SIZE = 8          # GPU can process more examples at once (much faster)
     LEARNING_RATE = 2e-4    # Slightly lower LR works well with larger batches on GPU
     MAX_LENGTH = 512        # GPU has more memory, so we can handle longer text
     SAVE_STEPS = 50         # Save a checkpoint every 50 steps
     LOGGING_STEPS = 1      # Print progress every 10 steps
-    GRAD_ACCUM_STEPS = 3    # Fewer accumulation steps needed (batch is already bigger)
+    GRAD_ACCUM_STEPS = 2    # Fewer accumulation steps needed (batch is already bigger)
 
     # torch.float16 = "half precision" — uses HALF the memory of float32.
     # GPUs have dedicated hardware for float16 math, making it much faster.
@@ -202,7 +202,7 @@ else:
     MAX_LENGTH = 256        # Shorter sequences = less RAM used
     SAVE_STEPS = 50         # Save a checkpoint every 50 steps
     LOGGING_STEPS = 1       # Log EVERY step — useful since CPU training is slow
-    GRAD_ACCUM_STEPS = 6   
+    GRAD_ACCUM_STEPS = 4   
 
     # torch.float32 = "full precision" — the standard for CPU.
     # CPUs don't have special hardware for float16, so we must use float32.
